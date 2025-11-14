@@ -1,0 +1,110 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+//
+// USER MODEL
+//
+model User {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  password  String
+  role      Role
+  createdAt DateTime @default(now())
+
+  doctor    Doctor?
+  patient   Patient?
+}
+
+enum Role {
+  DOCTOR
+  PATIENT
+}
+
+//
+// DOCTOR PROFILE
+//
+model Doctor {
+  id             Int       @id @default(autoincrement())
+  userId         Int       @unique
+  specialization String
+  bio            String?
+  contactInfo    String?
+
+  user           User      @relation(fields: [userId], references: [id])
+  slots          Slot[]
+  appointments   Appointment[]
+}
+
+//
+// PATIENT PROFILE
+//
+model Patient {
+  id           Int           @id @default(autoincrement())
+  userId       Int           @unique
+
+  user         User          @relation(fields: [userId], references: [id])
+  appointments Appointment[]
+}
+
+//
+// SLOT MODEL (UUID + timestamps)
+//
+model Slot {
+  id         String   @id @default(uuid())
+  date       String
+  startTime  String
+  endTime    String
+
+  doctorId   Int
+  doctor     Doctor   @relation(fields: [doctorId], references: [id])
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  appointments Appointment[]
+}
+
+//
+// APPOINTMENTS (Cancellation supported)
+//
+model Appointment {
+  id            Int                @id @default(autoincrement())
+  slotId        String?
+  doctorId      Int
+  patientId     Int
+
+  status        AppointmentStatus  @default(PENDING)
+  description   String?
+
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  // CANCELLATION FIELDS
+  cancelledAt   DateTime?
+  cancelReason  String?
+  cancelledBy   CancelledBy?
+
+  // RELATIONS
+  slot          Slot?              @relation(fields: [slotId], references: [id])
+  doctor        Doctor             @relation(fields: [doctorId], references: [id])
+  patient       Patient            @relation(fields: [patientId], references: [id])
+}
+
+enum AppointmentStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+}
+
+enum CancelledBy {
+  PATIENT
+  DOCTOR
+}
